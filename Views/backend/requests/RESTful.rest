@@ -43,7 +43,7 @@ GET http://localhost:3003/api/user
 
 
 ### 
-POST http://localhost:3003/api/login
+POST http://localhost:3001/api/login
 content-type: application/json
 
 {
@@ -70,4 +70,14 @@ Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InByY
 
 
 ###
-GET http://localhost:3003/api/blogs
+GET http://localhost:3001/api/blogs
+
+
+###
+POST http://localhost:3001/api/blogs/650dc2f290cf6f998b9aa16c/comment
+content-Type: application/json
+Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InByYWJpbmJhc3Rha290aSIsImlkIjoiNjRmYzJiYTlmOTkzYjdhOTNhMDgwNTUwIiwiaWF0IjoxNjk1Mzk5NzAzfQ.LnlEf6HDb2kSrZCjUe0VY_V6otGSWsE2N1GpjfH6bNU
+
+{
+    "comment":"this is another comment"
+}

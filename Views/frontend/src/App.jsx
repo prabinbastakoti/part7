@@ -1,18 +1,23 @@
-import { useState, useEffect } from 'react';
-import Blog from './components/Blog';
+import { useEffect } from 'react';
 import blogService from './services/blogs';
 import loginService from './services/login';
-import NewBlogForm from './components/newBlogForm';
-import Togglable from './components/togglable';
-import LoginForm from './components/loginForm';
+import userService from './services/users';
 import {
   useNotificationDispatch,
   useNotificationValue,
 } from './context/notificationContext';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useUserDispatch, useUserValue } from './context/userContext';
+import { Link, Route, Routes, useMatch } from 'react-router-dom';
+import Users from './components/Users';
+import LoginForm from './components/loginForm';
+import Home from './components/Home';
+import UserBlogs from './components/UserBlogs';
+import BlogDetail from './components/BlogDetail';
 
 const App = () => {
+  const match = useMatch('/blogs/:id');
+
   const user = useUserValue();
 
   const setUser = useUserDispatch();
@@ -21,25 +26,13 @@ const App = () => {
 
   const dispatch = useNotificationDispatch();
 
-  const queryClient = useQueryClient();
-
-  const newBlogMutation = useMutation(blogService.create, {
-    onSuccess: () => {
-      queryClient.invalidateQueries('blogs');
-    },
+  const usersResponse = useQuery({
+    queryKey: ['users'],
+    queryFn: userService.getAll,
+    refetchOnWindowFocus: false,
   });
 
-  const updateBlogMutation = useMutation(blogService.update, {
-    onSuccess: () => {
-      queryClient.invalidateQueries('blogs');
-    },
-  });
-
-  const removeBlogMutation = useMutation(blogService.remove, {
-    onSuccess: () => {
-      queryClient.invalidateQueries('blogs');
-    },
-  });
+  const users = usersResponse.data;
 
   useEffect(() => {
     const loggedInUser = window.localStorage.getItem('loggedInValue');
@@ -50,17 +43,17 @@ const App = () => {
     }
   }, []);
 
-  const result = useQuery({
+  const blogsResponse = useQuery({
     queryKey: ['blogs'],
     queryFn: blogService.getAll,
     refetchOnWindowFocus: false,
   });
 
-  if (result.isLoading) {
+  if (blogsResponse.isLoading || usersResponse.isLoading) {
     return <div>Loading data...</div>;
   }
 
-  const blogs = result.data;
+  const blogs = blogsResponse.data;
 
   const handleSubmit = async (object) => {
     const credentials = { ...object };
@@ -82,18 +75,6 @@ const App = () => {
     setUser({ type: 'CLEAR' });
   };
 
-  const handleCreate = async (object) => {
-    newBlogMutation.mutate(object);
-    successMessage(`a new blog ${object.title} added`);
-  };
-
-  const successMessage = (message) => {
-    dispatch({ type: 'SET', payload: message });
-    setTimeout(() => {
-      dispatch({ type: 'CLEAR' });
-    }, 5000);
-  };
-
   const errorMessage = (message) => {
     dispatch({ type: 'SET', payload: message });
     setTimeout(() => {
@@ -101,32 +82,8 @@ const App = () => {
     }, 5000);
   };
 
-  const BlogForm = () => {
-    return (
-      <Togglable label="Create new Blog">
-        <NewBlogForm handleCreate={handleCreate} />
-      </Togglable>
-    );
-  };
-
   const LoginFormFunction = () => {
     return <LoginForm handleSubmit={handleSubmit} />;
-  };
-
-  const updateBlog = async (blog) => {
-    try {
-      updateBlogMutation.mutate(blog);
-    } catch (error) {
-      console.log('error', error.response.data.error);
-    }
-  };
-
-  const handleRemove = async (blog) => {
-    try {
-      removeBlogMutation.mutate(blog);
-    } catch (error) {
-      console.log('error', error.response.data.error);
-    }
   };
 
   if (user === null) {
@@ -141,24 +98,45 @@ const App = () => {
 
   const sortedblogs = [...blogs].sort((a, b) => b.likes - a.likes);
 
+  const selectBlog = match
+    ? blogs.find((blog) => blog.id === match.params.id)
+    : null;
+
   return (
     <div>
+      <nav>
+        <ul
+          style={{
+            display: 'flex',
+            listStyle: 'none',
+            gap: '20px',
+            backgroundColor: 'rgb(210,210,210)',
+            padding: '10px',
+          }}
+        >
+          <li>
+            <Link to={'/'}>blogs</Link>
+          </li>
+          <li>
+            <Link to={'/users'}>users</Link>
+          </li>
+          <li>
+            {user.name} logged in <button onClick={handleLogout}>logout</button>
+          </li>
+        </ul>
+      </nav>
       <h2>blogs</h2>
       {notification && <h2 className="success">{notification}</h2>}
-      <h2>
-        {user.name} logged in <button onClick={handleLogout}>logout</button>
-      </h2>
-      {BlogForm()}
-      {sortedblogs.map((blog) => (
-        <div className="blog" key={blog.id}>
-          <Blog
-            blog={blog}
-            updateBlog={updateBlog}
-            remove={handleRemove}
-            user={user.username}
-          />
-        </div>
-      ))}
+
+      <Routes>
+        <Route path="/users" element={<Users users={users} />} />
+        <Route
+          path="/"
+          element={<Home sortedblogs={sortedblogs} user={user} />}
+        />
+        <Route path="/users/:id" element={<UserBlogs users={users} />} />
+        <Route path="/blogs/:id" element={<BlogDetail blog={selectBlog} />} />
+      </Routes>
     </div>
   );
 };
